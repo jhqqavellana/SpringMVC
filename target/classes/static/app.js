@@ -1,38 +1,27 @@
 const API_URL = "http://localhost:8080/api/students";
+const API_AUTH = "http://localhost:8080/api/auth";
 
 async function createStudent(studentData) {
-  try{
-    const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(studentData)
-    });
+    try {
+        const response = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(studentData),
+            credentials: "include"
+        });
 
-    if (response.ok){
-      alert("Student added successfully!");
-      resetForm();
-    } else {
-      alert("Error adding student.");
+        if (response.ok) {
+            alert("Student added successfully!");
+            resetForm();
+            getAllStudents();
+        } else {
+            alert("Error adding student.");
+        }
+    } catch (error) {
+        console.error("Error creating student:", error);
     }
-  } catch (error) {
-    console.error("Error creating student:", error)
-  }
 }
 
-document.getElementById("studentForm").addEventListener("submit", function(e) {
-  e.preventDefault();
-
-  const id = document.getElementById("studentId").value;
-  const studentData = {
-      firstName: document.getElementById("firstName").value,
-      lastName: document.getElementById("lastName").value,
-      email: document.getElementById("email").value
-  };
-  createStudent(studentData);
-}
-);
-
-// Helper function to reset form state
 function resetForm() {
     document.getElementById("studentId").value = "";
     document.getElementById("studentForm").reset();
@@ -42,28 +31,32 @@ function resetForm() {
     submitBtn.style.backgroundColor = "#4CAF50";
 }
 
-document.getElementById("studentForm").addEventListener("submit", function(e) {
+document.getElementById("studentForm").addEventListener("submit", function (e) {
     e.preventDefault();
 
-    if(!validateStudentForm()){
+    if (!validateStudentForm()) {
         return;
     }
+
     const id = document.getElementById("studentId").value;
     const studentData = {
         firstName: document.getElementById("firstName").value.trim(),
         lastName: document.getElementById("lastName").value.trim(),
         email: document.getElementById("email").value.trim()
     };
-    if(id){
-        updateStudent(id, studentData)
+
+    if (id) {
+        updateStudent(id, studentData);
     } else {
-    createStudent(studentData);
+        createStudent(studentData);
     }
 });
 
 async function getAllStudents() {
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL, {
+            credentials: "include"
+        });
         if (!response.ok) throw new Error("Network response was not ok");
 
         const students = await response.json();
@@ -95,7 +88,9 @@ document.addEventListener("DOMContentLoaded", getAllStudents);
 
 async function initializeStudentFormById(id) {
     try {
-        const response = await fetch(`${API_URL}/${id}`);
+        const response = await fetch(`${API_URL}/${id}`, {
+            credentials: "include"
+        });
         if (!response.ok) throw new Error("Could not fetch student details");
 
         const student = await response.json();
@@ -105,12 +100,10 @@ async function initializeStudentFormById(id) {
         document.getElementById("lastName").value = student.lastName;
         document.getElementById("email").value = student.email;
 
-        // button changes when edit button is triggered
         const submitBtn = document.getElementById("submitBtn");
         submitBtn.textContent = "Update";
         submitBtn.style.backgroundColor = "#007bff";
 
-        // clear old error highlights when loading data into form
         clearValidationStyles();
     } catch (error) {
         console.error("Error fetching student details:", error);
@@ -122,7 +115,8 @@ async function updateStudent(id, studentData) {
         const response = await fetch(`${API_URL}/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(studentData)
+            body: JSON.stringify(studentData),
+            credentials: "include"
         });
 
         if (response.ok) {
@@ -141,7 +135,8 @@ async function deleteStudent(id) {
     if (confirm("Are you sure you want to delete this student?")) {
         try {
             const response = await fetch(`${API_URL}/${id}`, {
-                method: "DELETE"
+                method: "DELETE",
+                credentials: "include"
             });
 
             if (response.ok) {
@@ -155,4 +150,51 @@ async function deleteStudent(id) {
             console.error("Error deleting student:", error);
         }
     }
+}
+
+async function loginUser(loginDto) {
+  try {
+    const response = await fetch(`${API_AUTH}/auth_login_session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(loginDto),
+      credentials: "include"
+    });
+
+    if (response.ok) {
+      alert("Login successful!");
+      window.location.href = "index.html";
+    } else {
+      alert("Invalid credentials.");
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+  }
+}
+
+async function logoutUser() {
+  try {
+    await fetch(`${API_AUTH}/logout`, {
+      method: "POST",
+      credentials: "include"
+    });
+    document.getElementById("studentTableBody").innerHTML = "";
+    resetForm();
+    alert("Logged out successfully!");
+
+    try {
+      await fetch(API_URL, {
+        method: "GET",
+        headers: {
+          "Authorization": "Basic " + btoa("invalid_user:wrong_password")
+        }
+      });
+    } catch (err) {
+      console.log("Browser credential cache cleared.");
+    }
+    window.location.reload();
+
+  } catch (e) {
+    console.error("Logout transmission crash:", e);
+  }
 }

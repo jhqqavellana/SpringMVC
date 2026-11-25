@@ -2,6 +2,8 @@ package com.spring.spring_rest.controller;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
@@ -16,8 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.reactive.CorsConfigurationSource;
-import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.spring.spring_rest.dto.AuthLoginDto;
 import com.spring.spring_rest.dto.AuthRoleRegisterDto;
@@ -26,6 +28,9 @@ import com.spring.spring_rest.entity.Auth_Role;
 import com.spring.spring_rest.entity.Auth_User;
 import com.spring.spring_rest.repository.AuthRoleRepository;
 import com.spring.spring_rest.repository.AuthUserRepository;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -151,6 +156,37 @@ public class AuthenticationController {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
+
+@PostMapping("/auth_login_session")
+public ResponseEntity<?> loginWithSession(@RequestBody AuthLoginDto authLoginDto,
+                                          HttpServletRequest request) {
+
+    Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(authLoginDto.getUsername(),
+                                                    authLoginDto.getPassword())
+    );
+
+    SecurityContextHolder.getContext().setAuthentication(authentication);
+    HttpSession session = request.getSession(true);
+    session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
+
+    Map<String, String> response = new HashMap<>();
+    response.put("message", "Authenticated successfully via session cookie.");
+    return ResponseEntity.ok(response);
+}
+
+
+@PostMapping("/logout")
+public ResponseEntity<String> logout(HttpServletRequest request) {
+    HttpSession session = request.getSession(false);
+    if (session != null) {
+        session.invalidate();
+    }
+    SecurityContextHolder.clearContext();
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body("Logged out from session container.");
+}
 
 
 }
